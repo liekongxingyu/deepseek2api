@@ -152,6 +152,7 @@ export function createSessionWorkspace(options) {
       await loadSessions();
     }
 
+    renderConversationState();
     return sessionId;
   }
 
