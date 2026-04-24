@@ -2,7 +2,8 @@ import { createServer } from "node:http";
 
 import { config } from "./config.js";
 import { handleApiRequest } from "./routes/api-routes.js";
-import { handleOpenAiRequest, handleProxyRequest } from "./routes/proxy-routes.js";
+import { handleOpenAiRequest } from "./routes/openai-routes.js";
+import { handleProxyRequest } from "./routes/proxy-routes.js";
 import { parseCookies, sendError, serveStaticFile } from "./utils/http.js";
 
 const server = createServer(async (request, response) => {

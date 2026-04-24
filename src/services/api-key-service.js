@@ -12,7 +12,13 @@ export function listApiKeysForOwner(ownerId) {
     .map(sanitizeKey);
 }
 
-export function createApiKeyRecord({ ownerId, accountId, label, plainKey }) {
+export function createApiKeyRecord({
+  ownerId,
+  accountId,
+  label,
+  plainKey,
+  toolCallsEnabled = false
+}) {
   const key = plainKey || createApiKey();
   const record = {
     id: createId(),
@@ -21,7 +27,8 @@ export function createApiKeyRecord({ ownerId, accountId, label, plainKey }) {
     label,
     keyHash: hashValue(key),
     preview: `${key.slice(0, 8)}...${key.slice(-4)}`,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    toolCallsEnabled: Boolean(toolCallsEnabled)
   };
 
   updateStore((state) => ({
@@ -42,6 +49,27 @@ export function deleteApiKeyRecord(ownerId, keyId) {
       (record) => !(record.id === keyId && record.ownerId === ownerId)
     )
   }));
+}
+
+export function updateApiKeyRecord(ownerId, keyId, patch) {
+  let updatedRecord = null;
+
+  updateStore((state) => ({
+    ...state,
+    apiKeys: state.apiKeys.map((record) => {
+      if (record.id !== keyId || record.ownerId !== ownerId) {
+        return record;
+      }
+
+      updatedRecord = {
+        ...record,
+        toolCallsEnabled: Boolean(patch?.toolCallsEnabled)
+      };
+      return updatedRecord;
+    })
+  }));
+
+  return updatedRecord ? sanitizeKey(updatedRecord) : null;
 }
 
 export function getApiKeyRecord(key) {

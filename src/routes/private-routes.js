@@ -1,4 +1,9 @@
-import { createApiKeyRecord, deleteApiKeyRecord, listApiKeysForOwner } from "../services/api-key-service.js";
+import {
+  createApiKeyRecord,
+  deleteApiKeyRecord,
+  listApiKeysForOwner,
+  updateApiKeyRecord
+} from "../services/api-key-service.js";
 import { resolveScopedAccount, saveDeepseekAccountForOwner } from "../services/auth-service.js";
 import { deleteAccountById, resolveAccountLabel } from "../services/account-service.js";
 import { loginToDeepseek } from "../services/deepseek-auth.js";
@@ -129,10 +134,26 @@ export async function handlePrivateApiRequest({ request, response, session, url 
       ownerId: session.ownerId,
       accountId: account.id,
       label: body.label || resolveAccountLabel(account),
-      plainKey: body.plainKey || ""
+      plainKey: body.plainKey || "",
+      toolCallsEnabled: body.toolCallsEnabled
     });
 
     sendJson(response, 200, result);
+    return true;
+  }
+
+  if (request.method === "PATCH" && url.pathname.startsWith("/api/api-keys/")) {
+    const body = await readJsonRequest(request);
+    const apiKey = updateApiKeyRecord(session.ownerId, url.pathname.split("/").pop(), {
+      toolCallsEnabled: body.toolCallsEnabled
+    });
+
+    if (!apiKey) {
+      sendError(response, 404, "API key not found");
+      return true;
+    }
+
+    sendJson(response, 200, { apiKey });
     return true;
   }
 

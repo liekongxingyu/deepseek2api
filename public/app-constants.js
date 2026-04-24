@@ -27,7 +27,7 @@ export const ELEMENT_IDS = [
   "active-theme-label", "admin-invite-form", "admin-invite-count", "admin-invite-list",
   "admin-invite-status", "admin-register-hint", "admin-registration-form", "admin-registration-status",
   "admin-user-list", "admin-user-status", "api-key-count", "api-key-form", "api-key-label", "api-key-output",
-  "api-key-plain", "api-keys", "app-status", "app-view", "attach-files", "chat-status",
+  "api-key-plain", "api-key-tool-calls", "api-keys", "app-status", "app-view", "attach-files", "chat-status",
   "delete-selected-invites", "delete-selected-users", "disable-selected-users", "draft-files", "enable-selected-users",
   "endpoint-count", "explorer-body", "explorer-form", "explorer-method", "explorer-output", "explorer-path",
   "explorer-query", "file-input", "incognito-description", "incognito-form",

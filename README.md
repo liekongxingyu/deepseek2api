@@ -1,41 +1,42 @@
 # DeepSeek2API
 
-> 一个纯 Node.js 的 DeepSeek Web 控制台 + OpenAI 兼容桥接服务。  
-> 把本地用户体系、DeepSeek 账号绑定、API Key 管理、原生代理调试和管理后台放进同一个可直接运行的项目里。
+> 一个纯 Node.js 的 DeepSeek Web 控制台 + OpenAI 兼容桥接服务。
+
+它把本地用户体系、DeepSeek 账号绑定、API Key 管理、DeepSeek 原生代理调试和 OpenAI 兼容接口放进同一个可直接运行的项目里。
 
 ## 功能概览
 
 | 模块 | 能力 |
 | --- | --- |
-| 控制台 UI | 登录 / 注册、聊天工作区、历史会话、文件上传、主题切换、流式 / 非流式响应切换 |
-| DeepSeek 账号层 | 绑定多个 DeepSeek Web 账号，按管理员 / 本地用户隔离可见范围 |
-| OpenAI 兼容层 | 提供 `GET /v1/models` 和 `POST /v1/chat/completions` |
+| 控制台 UI | 注册 / 登录、本地用户隔离、DeepSeek 账号绑定、API Key 管理 |
+| OpenAI 兼容层 | `GET /v1/models`、`POST /v1/chat/completions`、`POST /v1/responses`、`GET /v1/responses/:id` |
+| 工具调用 | 仅适配 chat / responses 协议；按 API Key 单独开关 |
 | 原生代理层 | 提供 `/proxy/*` 白名单转发，便于调试和复用 DeepSeek Web 接口 |
-| 管理后台 | 注册开关、邀请码生成 / 删除、用户启用 / 禁用 / 删除、并发 / 速率限制 |
-| 无痕模式 | 支持全局或用户级无痕，会话完成后自动清理 |
-| 部署形态 | 无第三方 npm 运行时依赖，`npm start` 即可启动 |
+| 管理后台 | 注册开关、邀请码、用户启用 / 禁用 / 删除、并发 / 速率限制 |
+| 无痕模式 | 支持全局或用户级无痕，请求完成后自动清理会话 |
+| 部署形态 | 无第三方运行时依赖，`npm start` 即可启动 |
 
 ## 项目特点
 
 - 纯 Node.js 原生 HTTP 服务，无 Express、无数据库、无构建步骤
-- 前后端都在一个仓库里，静态资源由服务端直接托管
+- 前后端都在同一个仓库里，静态资源由服务端直接托管
 - 运行状态统一保存在 `data/app.json`
 - DeepSeek token 失效时会自动重新登录并刷新
 - 遇到 PoW 保护接口时会自动获取 wasm 并求解挑战
 - OpenAI 兼容层同时支持流式和非流式响应
-- `deepseek-reasoner-*` 模型会把思维内容包裹在 `<think>...</think>`
-- API Key 请求会在当前用户可见账号之间轮询，提高多账号利用率
+- `deepseek-reasoner-*` 模型会把思维内容包在 `<think>...</think>`
+- API Key 请求会在当前用户可见账号之间轮询
 
 ## 运行要求
 
 - Node.js 18+
-- 服务端能够访问 `https://chat.deepseek.com`
-- 浏览器在绑定 DeepSeek 账号时需要访问 `https://cdn.deepseek.com`
-- 如触发 PoW 校验，服务端还需要访问 `https://fe-static.deepseek.com`
+- 服务端能够访问 [https://chat.deepseek.com](https://chat.deepseek.com)
+- 浏览器在绑定 DeepSeek 账号时需要访问 [https://cdn.deepseek.com](https://cdn.deepseek.com)
+- 如触发 PoW 校验，服务端还需要访问 [https://fe-static.deepseek.com](https://fe-static.deepseek.com)
 
 ## 快速开始
 
-### 1) 启动服务
+### 1. 启动服务
 
 ```bash
 npm start
@@ -47,7 +48,7 @@ npm start
 http://127.0.0.1:3000
 ```
 
-### 2) 可选：创建本地配置
+### 2. 可选：创建本地配置
 
 仓库不自带 `.env`。如需启用管理员入口或修改端口，可参考 `.env.example` 手动创建：
 
@@ -55,7 +56,7 @@ http://127.0.0.1:3000
 cp .env.example .env
 ```
 
-Windows PowerShell 可以使用：
+Windows PowerShell：
 
 ```powershell
 Copy-Item .env.example .env
@@ -69,14 +70,15 @@ APP_ADMIN_USERNAME=
 APP_ADMIN_PASSWORD=
 ```
 
-### 3) 打开控制台
+### 3. 打开控制台
 
-浏览器访问 `http://127.0.0.1:3000`，然后按下面的典型流程使用：
+浏览器访问 `http://127.0.0.1:3000`，然后按下面流程使用：
 
 1. 注册本地用户，或使用管理员账号登录
 2. 在“账号”页绑定 DeepSeek 账号
 3. 在“密钥”页创建 API Key
-4. 使用内置聊天工作区，或通过 OpenAI 兼容接口接入你的客户端
+4. 如需工具调用，为该 API Key 单独打开“工具调用”开关
+5. 使用内置聊天工作区，或通过 OpenAI 兼容接口接入客户端
 
 ## 环境变量
 
@@ -90,20 +92,14 @@ APP_ADMIN_PASSWORD=
 
 ## 控制台能力
 
-### 聊天工作区
-
-- 查看 DeepSeek 历史会话并加载消息记录
-- 新建会话、继续会话、发送消息
-- 上传文件并在聊天中引用
-- 切换流式 / 非流式响应
-- 切换快速 / 专家 / 推理 / 联网模型
-
 ### 账号与密钥
 
 - 绑定 / 删除 DeepSeek Web 账号
 - 为当前用户创建多个 API Key
 - API Key 可指定自定义明文，留空则自动生成
-- OpenAI 兼容调用默认使用所选账号起始，并在当前用户可见账号之间轮询
+- API Key 可单独开启或关闭“工具调用”
+- 创建 API Key 时可直接设置工具调用开关
+- OpenAI 兼容请求会在当前用户可见账号之间轮询
 
 ### 管理后台
 
@@ -115,9 +111,9 @@ APP_ADMIN_PASSWORD=
 
 ### 无痕模式
 
-- 管理员可以开启全局无痕
-- 普通用户可以只为自己开启无痕
-- 开启后，聊天完成后会自动清理相关 DeepSeek 会话
+- 管理员可开启全局无痕
+- 普通用户可只为自己开启无痕
+- 开启后，请求完成后会自动清理相关 DeepSeek 会话
 
 ## OpenAI 兼容接口
 
@@ -125,35 +121,16 @@ APP_ADMIN_PASSWORD=
 
 - `GET /v1/models`
 - `POST /v1/chat/completions`
-
-### 请求示例
-
-```bash
-curl http://127.0.0.1:3000/v1/models \
-  -H "Authorization: Bearer <YOUR_API_KEY>"
-```
-
-```bash
-curl http://127.0.0.1:3000/v1/chat/completions \
-  -H "Authorization: Bearer <YOUR_API_KEY>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "deepseek-chat-fast",
-    "messages": [
-      { "role": "user", "content": "hello" }
-    ],
-    "stream": false
-  }'
-```
+- `POST /v1/responses`
+- `GET /v1/responses/:id`
 
 ### 模型说明
 
 - 默认模型：`deepseek-chat-fast`
 - 联网能力通过模型后缀 `-search` 控制
-- 不支持 `web_search_options`；请改用 `*-search` 模型
+- 不支持 `web_search_options`，请改用 `*-search` 模型
 
-<details>
-<summary>展开查看支持的模型 ID</summary>
+支持的模型 ID：
 
 - `deepseek-chat-fast`
 - `deepseek-chat-fast-search`
@@ -164,7 +141,69 @@ curl http://127.0.0.1:3000/v1/chat/completions \
 - `deepseek-reasoner-expert`
 - `deepseek-reasoner-expert-search`
 
-</details>
+### `chat/completions` 示例
+
+```bash
+curl http://127.0.0.1:3000/v1/chat/completions \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "deepseek-chat-fast",
+    "messages": [
+      { "role": "user", "content": "hello" }
+    ]
+  }'
+```
+
+### `responses` 示例
+
+```bash
+curl http://127.0.0.1:3000/v1/responses \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "deepseek-chat-fast",
+    "input": "hello"
+  }'
+```
+
+### 工具调用
+
+- 工具调用仅适配 `chat/completions` 和 `responses`
+- 协议入口始终存在；是否允许工具调用由 API Key 的开关决定
+- API Key 未开启工具调用时：
+  - 普通请求可正常使用
+  - 带 `tools`、`tool_choice`、工具历史消息的请求会直接返回 `400`
+- API Key 开启工具调用时：
+  - 服务会把工具 schema 注入提示词
+  - 再把模型输出中的工具 XML 解析回 OpenAI 兼容的工具调用结构
+
+### 工具调用行为说明
+
+- 当前实现本质上是“提示词注入 + 输出解析”，不是上游原生 tool calling
+- 提示词允许模型在工具调用前、后或前后都输出普通文本
+- 普通文本是否出现、出现在哪一侧，由模型自己决定，不做强制
+- `chat/completions` 非流式：
+  - 如果识别到工具调用，响应会同时返回 `message.tool_calls`
+  - 如果模型在工具调用前后还输出了普通文本，文本会保留在 `message.content`
+- `chat/completions` 流式：
+  - 普通文本继续走 `delta.content`
+  - 工具调用走 `delta.tool_calls`
+  - 工具调用事件出现的位置不固定，取决于模型实际输出顺序
+- `responses` 非流式：
+  - 混合输出会按顺序拆成 `output` 数组中的多个 item
+  - 典型形态是 `message -> function_call -> message`
+- `responses` 流式：
+  - 文本段会逐段生成独立的 message item
+  - 工具调用会生成 function_call item
+  - 事件顺序与模型实际输出顺序一致
+
+### 当前限制
+
+- 只识别 XML / Markup 风格的工具调用块
+- 不识别把 `"tool_calls": [...]` 当普通文本吐出来的 JSON 片段
+- `previous_response_id` 目前不支持
+- 混合输出是否稳定出现，和所选模型强相关；`deepseek-reasoner-*` 通常比 `deepseek-chat-*` 更容易产出“文本 + 工具调用”的混合结果
 
 ## 原生代理接口
 
@@ -179,8 +218,7 @@ curl http://127.0.0.1:3000/v1/chat/completions \
 - 如果存在多个可用账号，可通过请求头 `x-proxy-account-id` 指定账号
 - 只允许转发白名单路径，白名单定义在 `src/config.js`
 
-<details>
-<summary>展开查看当前白名单路径</summary>
+当前白名单包含：
 
 - `/api/v0/chat/completion`
 - `/api/v0/chat/continue`
@@ -208,16 +246,11 @@ curl http://127.0.0.1:3000/v1/chat/completions \
 - `/api/v0/share/delete`
 - `/api/v0/share/fork`
 - `/api/v0/share/list`
-- `/api/v0/users`
+- `/api/v0/users/current`
 - `/api/v0/users/settings`
 - `/api/v0/users/update_settings`
 
-</details>
-
 ## 本地接口总览
-
-<details>
-<summary>展开查看完整接口清单</summary>
 
 ### 公共接口
 
@@ -235,6 +268,7 @@ curl http://127.0.0.1:3000/v1/chat/completions \
 - `POST /api/incognito`
 - `GET /api/api-keys`
 - `POST /api/api-keys`
+- `PATCH /api/api-keys/:id`
 - `DELETE /api/api-keys/:id`
 
 ### 管理接口
@@ -248,8 +282,6 @@ curl http://127.0.0.1:3000/v1/chat/completions \
 - `POST /api/admin/users/batch-disable`
 - `POST /api/admin/users/batch-delete`
 
-</details>
-
 ## 项目结构
 
 ```text
@@ -257,7 +289,7 @@ curl http://127.0.0.1:3000/v1/chat/completions \
 ├─ data/                  # 运行时数据目录
 ├─ public/                # 前端控制台静态资源
 ├─ src/
-│  ├─ routes/             # 公共 / 私有 / 管理 / 代理路由
+│  ├─ routes/             # 公共 / 私有 / 管理 / OpenAI / 代理路由
 │  ├─ services/           # 账号、用户、桥接、PoW、限流等核心逻辑
 │  ├─ storage/            # JSON 文件存储
 │  └─ utils/              # HTTP、SSE、ID、Prompt 等工具

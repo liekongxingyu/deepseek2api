@@ -54,10 +54,21 @@ function normalizeUsers(value) {
   })) : [];
 }
 
+function normalizeApiKeys(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map((record) => ({
+    ...record,
+    toolCallsEnabled: Boolean(record?.toolCallsEnabled)
+  }));
+}
+
 function normalizeState(value) {
   return {
     accounts: Array.isArray(value?.accounts) ? value.accounts : [],
-    apiKeys: Array.isArray(value?.apiKeys) ? value.apiKeys : [],
+    apiKeys: normalizeApiKeys(value?.apiKeys),
     incognito: normalizeIncognito(value?.incognito),
     invites: normalizeInvites(value?.invites),
     registration: normalizeRegistration(value?.registration),

@@ -1,123 +1,93 @@
 import { randomUUID } from "node:crypto";
 
-import { createDeepseekDeltaDecoder, createSseParser } from "../utils/deepseek-sse.js";
-import { buildPromptFromMessages } from "../utils/prompt.js";
-import { createChatSession, deleteChatSession } from "./chat-session-service.js";
-import { proxyDeepseekRequest } from "./deepseek-proxy.js";
+import { collectCompletionContent, streamCompletionContent } from "./openai-completion-runner.js";
 import { assertNoLegacySearchOptions, resolveOpenAiModel } from "./openai-request.js";
+import { createToolSieve, extractToolAwareOutput } from "./openai-tool-sieve.js";
+import { buildOpenAiPrompt } from "./openai-tool-prompt.js";
+import { ensureToolChoiceSatisfied, hasChatToolingRequest } from "./openai-tool-policy.js";
+import { createOpenAiError } from "./openai-error.js";
 
-const THINK_OPEN_TAG = "<think>";
-const THINK_CLOSE_TAG = "</think>";
-
-function toContentText(content) {
-  if (typeof content === "string") {
-    return content;
-  }
-
-  if (!Array.isArray(content)) {
-    return "";
-  }
-
-  return content
-    .map((item) => (item?.type === "text" ? item.text ?? "" : ""))
-    .filter(Boolean)
-    .join("\n");
+function createCompletionId() {
+  return `chatcmpl_${randomUUID()}`;
 }
 
-function normalizeMessages(messages) {
-  return (messages ?? []).map((message) => ({
-    role: message.role ?? "user",
-    content: toContentText(message.content)
+function createChatToolCalls(calls, startIndex = 0) {
+  return calls.map((call, offset) => ({
+    index: startIndex + offset,
+    id: call.id,
+    type: "function",
+    function: {
+      name: call.name,
+      arguments: call.argumentsText
+    }
   }));
 }
 
-function resolveCompletionRequest(body) {
+function resolveCompletionRequest(body, toolCallsEnabled) {
   assertNoLegacySearchOptions(body);
 
+  if (!toolCallsEnabled && hasChatToolingRequest(body)) {
+    throw createOpenAiError(400, "Tool calls are disabled for this API key");
+  }
+
+  const model = resolveOpenAiModel(body?.model);
+  const promptRequest = buildOpenAiPrompt({
+    messages: body?.messages ?? [],
+    toolChoice: toolCallsEnabled ? body?.tool_choice : undefined,
+    tools: toolCallsEnabled ? body?.tools ?? [] : []
+  });
+
   return {
-    model: resolveOpenAiModel(body?.model),
-    prompt: buildPromptFromMessages(normalizeMessages(body?.messages))
+    model,
+    prompt: promptRequest.prompt,
+    toolChoicePolicy: promptRequest.toolChoicePolicy,
+    toolNames: promptRequest.toolNames
   };
 }
 
-async function startCompletion({ account, requestOptions, sessionId }) {
-  return proxyDeepseekRequest({
-    account,
-    method: "POST",
-    path: "/api/v0/chat/completion",
-    body: Buffer.from(
-      JSON.stringify({
-        chat_session_id: sessionId,
-        parent_message_id: null,
-        model_type: requestOptions.model.modelType,
-        prompt: requestOptions.prompt,
-        ref_file_ids: [],
-        thinking_enabled: requestOptions.model.thinkingEnabled,
-        search_enabled: requestOptions.model.searchEnabled,
-        preempt: false
-      })
-    ),
-    headers: { "content-type": "application/json" }
-  });
-}
+function buildChatCompletionPayload(completionId, requestOptions, content) {
+  const parsed = requestOptions.toolNames.length
+    ? extractToolAwareOutput(content, requestOptions.toolNames)
+    : { content, toolCalls: [] };
 
-function createThinkingTagger() {
-  let currentKind = null;
+  ensureToolChoiceSatisfied(requestOptions.toolChoicePolicy, parsed.toolCalls);
+
+  if (parsed.toolCalls.length) {
+    return {
+      id: completionId,
+      object: "chat.completion",
+      created: Math.floor(Date.now() / 1000),
+      model: requestOptions.model.id,
+      choices: [
+        {
+          index: 0,
+          finish_reason: "tool_calls",
+          message: {
+            role: "assistant",
+            content: parsed.content.length ? parsed.content : null,
+            tool_calls: createChatToolCalls(parsed.toolCalls)
+          }
+        }
+      ]
+    };
+  }
 
   return {
-    push(delta) {
-      if (!delta?.text) {
-        return "";
-      }
-
-      let prefix = "";
-      if (delta.kind !== currentKind) {
-        if (currentKind === "thinking") {
-          prefix += THINK_CLOSE_TAG;
+    id: completionId,
+    object: "chat.completion",
+    created: Math.floor(Date.now() / 1000),
+    model: requestOptions.model.id,
+    choices: [
+      {
+        index: 0,
+        finish_reason: "stop",
+        message: {
+          role: "assistant",
+          content: parsed.content
         }
-        if (delta.kind === "thinking") {
-          prefix += THINK_OPEN_TAG;
-        }
-        currentKind = delta.kind;
       }
-
-      return prefix + delta.text;
-    },
-    flush() {
-      if (currentKind !== "thinking") {
-        return "";
-      }
-
-      currentKind = "response";
-      return THINK_CLOSE_TAG;
-    }
+    ]
   };
-}
-
-async function consumeTaggedStream(stream, onText) {
-  if (!stream) {
-    return;
-  }
-
-  const decoder = new TextDecoder();
-  const deltaDecoder = createDeepseekDeltaDecoder();
-  const tagger = createThinkingTagger();
-  const parser = createSseParser(({ data }) => {
-    const text = tagger.push(deltaDecoder.consume(data));
-    if (text) {
-      onText(text);
-    }
-  });
-
-  for await (const chunk of stream) {
-    parser.push(decoder.decode(chunk, { stream: true }));
-  }
-  parser.flush();
-
-  const suffix = tagger.flush();
-  if (suffix) {
-    onText(suffix);
-  }
 }
 
 function buildChunkPayload(completionId, model, delta, finishReason) {
@@ -134,99 +104,125 @@ function buildChunkPayload(completionId, model, delta, finishReason) {
   };
 }
 
-async function withCompletionSession({ account, body, deleteAfterFinish, onComplete }) {
-  const sessionId = await createChatSession(account);
-
-  try {
-    return await onComplete(sessionId);
-  } finally {
-    if (deleteAfterFinish) {
-      await deleteChatSession(account, sessionId);
-    }
-  }
+function writeSseChunk(response, payload) {
+  response.write(`data: ${JSON.stringify(payload)}\n\n`);
 }
 
-export async function collectOpenAiResponse({ account, body, deleteAfterFinish = false }) {
-  const requestOptions = resolveCompletionRequest(body);
-
-  return withCompletionSession({
+export async function collectOpenAiResponse({
+  account,
+  body,
+  deleteAfterFinish = false,
+  toolCallsEnabled = false
+}) {
+  const requestOptions = resolveCompletionRequest(body, toolCallsEnabled);
+  const { content } = await collectCompletionContent({
     account,
-    body,
     deleteAfterFinish,
-    onComplete: async (sessionId) => {
-      const { response } = await startCompletion({ account, requestOptions, sessionId });
-      let content = "";
-
-      await consumeTaggedStream(response.body, (text) => {
-        content += text;
-      });
-
-      return {
-        id: `chatcmpl_${randomUUID()}`,
-        object: "chat.completion",
-        created: Math.floor(Date.now() / 1000),
-        model: requestOptions.model.id,
-        choices: [
-          {
-            index: 0,
-            finish_reason: "stop",
-            message: {
-              role: "assistant",
-              content
-            }
-          }
-        ]
-      };
-    }
+    requestOptions
   });
+
+  return buildChatCompletionPayload(createCompletionId(), requestOptions, content);
 }
 
 export async function streamOpenAiResponse(options) {
-  const { account, body, deleteAfterFinish = false, response } = options;
-  const completionId = `chatcmpl_${randomUUID()}`;
-  const requestOptions = resolveCompletionRequest(body);
-
-  return withCompletionSession({
+  const {
     account,
     body,
+    deleteAfterFinish = false,
+    response,
+    toolCallsEnabled = false
+  } = options;
+  const completionId = createCompletionId();
+  const requestOptions = resolveCompletionRequest(body, toolCallsEnabled);
+  const toolSieve = requestOptions.toolNames.length
+    ? createToolSieve(requestOptions.toolNames)
+    : null;
+  let toolCallIndex = 0;
+  let sawToolCall = false;
+
+  response.writeHead(200, {
+    "cache-control": "no-cache, no-transform",
+    connection: "keep-alive",
+    "content-type": "text/event-stream; charset=utf-8",
+    "x-accel-buffering": "no"
+  });
+  response.flushHeaders?.();
+
+  writeSseChunk(response, buildChunkPayload(
+    completionId,
+    requestOptions.model.id,
+    { role: "assistant" }
+  ));
+
+  const emitToolCalls = (calls) => {
+    if (!calls.length) {
+      return;
+    }
+
+    sawToolCall = true;
+    writeSseChunk(response, buildChunkPayload(
+      completionId,
+      requestOptions.model.id,
+      { tool_calls: createChatToolCalls(calls, toolCallIndex) }
+    ));
+    toolCallIndex += calls.length;
+  };
+
+  await streamCompletionContent({
+    account,
     deleteAfterFinish,
-    onComplete: async (sessionId) => {
-      const { response: deepseekResponse } = await startCompletion({
-        account,
-        requestOptions,
-        sessionId
-      });
-
-      response.writeHead(200, {
-        "cache-control": "no-cache, no-transform",
-        connection: "keep-alive",
-        "content-type": "text/event-stream; charset=utf-8",
-        "x-accel-buffering": "no"
-      });
-      response.flushHeaders?.();
-
-      response.write(
-        `data: ${JSON.stringify(buildChunkPayload(
+    onText: (delta) => {
+      if (!toolSieve) {
+        writeSseChunk(response, buildChunkPayload(
           completionId,
           requestOptions.model.id,
-          { role: "assistant" }
-        ))}\n\n`
-      );
+          { content: delta }
+        ));
+        return;
+      }
 
-      await consumeTaggedStream(deepseekResponse.body, (delta) => {
-        response.write(
-          `data: ${JSON.stringify(buildChunkPayload(
+      const events = toolSieve.push(delta);
+      events.forEach((event) => {
+        if (event.type === "tool_calls") {
+          emitToolCalls(event.calls ?? []);
+          return;
+        }
+
+        if (event.text) {
+          writeSseChunk(response, buildChunkPayload(
             completionId,
             requestOptions.model.id,
-            { content: delta }
-          ))}\n\n`
-        );
+            { content: event.text }
+          ));
+        }
       });
-
-      response.write(
-        `data: ${JSON.stringify(buildChunkPayload(completionId, requestOptions.model.id, "", "stop"))}\n\n`
-      );
-      response.end("data: [DONE]\n\n");
-    }
+    },
+    requestOptions
   });
+
+  if (toolSieve) {
+    const tailEvents = toolSieve.flush();
+    tailEvents.forEach((event) => {
+      if (event.type === "tool_calls") {
+        emitToolCalls(event.calls ?? []);
+        return;
+      }
+
+      if (event.text) {
+        writeSseChunk(response, buildChunkPayload(
+          completionId,
+          requestOptions.model.id,
+          { content: event.text }
+        ));
+      }
+    });
+  }
+
+  writeSseChunk(response, buildChunkPayload(
+    completionId,
+    requestOptions.model.id,
+    {},
+    sawToolCall ? "tool_calls" : "stop"
+  ));
+  response.end("data: [DONE]\n\n");
 }

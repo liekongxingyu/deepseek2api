@@ -19,14 +19,12 @@ import { setupAuthTabs } from "/auth-ui.js";
 import { setupThemeController } from "/theme.js";
 import { setActiveTab, setupTabs, wireRippleEffects } from "/ui.js";
 import { collectElements, createView, setStatus } from "/view.js";
-
 let state = freezeState(INITIAL_STATE);
 const els = collectElements(ELEMENT_IDS);
 const themeController = setupThemeController();
 let view;
 let workspace;
 let draftFiles;
-
 const services = createAppServices({
   bootstrap,
   clearComposerInput: () => draftFiles.clearComposerInput(),
@@ -37,17 +35,24 @@ const services = createAppServices({
   setStatus,
   view: { renderShell: () => view.renderShell() }
 });
-
 view = createView({
   els,
   onDeleteAccount: services.deleteAccount,
   getState: () => state,
   onDeleteDraftFile: (localId) => draftFiles.deleteDraftFile(localId),
   onDeleteKey: services.handleApiKeyDelete,
+  onToggleKeyToolCalls: async (keyId, enabled) => {
+    try {
+      await services.updateApiKey(keyId, enabled);
+      setStatus(els["api-key-output"], "");
+    } catch (error) {
+      setStatus(els["api-key-output"], error.message);
+      throw error;
+    }
+  },
   onSelectSession: (sessionId) => workspace.handleSessionSelect(sessionId),
   themeController
 });
-
 workspace = createSessionWorkspace({
   accountRequiredMessage: "请先选择可用账号。",
   appStatusElement: els["app-status"],
@@ -58,7 +63,6 @@ workspace = createSessionWorkspace({
   setStatus,
   view
 });
-
 draftFiles = createDraftFileController({
   fileInput: els["file-input"],
   getDraftFiles: () => state.draftFiles,
@@ -66,21 +70,17 @@ draftFiles = createDraftFileController({
   renderComposer: () => view.renderComposer(),
   setAppState: updateState
 });
-
 function freezeState(value) {
   return Object.freeze({ ...value });
 }
-
 function updateState(patch) {
   state = freezeState({ ...state, ...patch });
 }
-
 function resolveSelectedAccountId(accounts) {
   return accounts.some((account) => account.id === state.selectedAccountId)
     ? state.selectedAccountId
     : (accounts[0]?.id || "");
 }
-
 function buildAuthenticatedState(me, discovery) {
   return {
     ...INITIAL_STATE,
@@ -93,7 +93,6 @@ function buildAuthenticatedState(me, discovery) {
     discoveredPaths: discovery.paths
   };
 }
-
 function toDisplayFile(file) {
   return {
     id: file.id || file.localId,
@@ -105,11 +104,9 @@ function toDisplayFile(file) {
     tokenUsage: file.tokenUsage
   };
 }
-
 function isIncognitoEnabled() {
   return Boolean(state.session?.incognito?.effectiveEnabled);
 }
-
 function renderOptimisticPrompt(prompt, files) {
   updateState({
     messages: [
@@ -121,21 +118,18 @@ function renderOptimisticPrompt(prompt, files) {
   view.renderMessages();
   view.renderMetrics();
 }
-
 function applyAssistantDelta(delta) {
   updateState({
     messages: [...state.messages.slice(0, -1), appendDelta(state.messages.at(-1), delta)]
   });
   view.renderLatestMessage(delta);
 }
-
 function replaceAssistantMessage(message) {
   updateState({
     messages: [...state.messages.slice(0, -1), message]
   });
   view.replaceLatestMessage();
 }
-
 function restoreFailedSend(snapshot) {
   els["prompt-input"].value = snapshot.prompt;
   updateState({
@@ -147,7 +141,6 @@ function restoreFailedSend(snapshot) {
   view.renderMetrics();
   view.renderComposer();
 }
-
 function resetConversation() {
   updateState({
     currentMessageId: null,

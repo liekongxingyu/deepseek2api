@@ -54,7 +54,7 @@ export const config = Object.freeze({
     "/api/v0/share/delete",
     "/api/v0/share/fork",
     "/api/v0/share/list",
-    "/api/v0/users",
+    "/api/v0/users/current",
     "/api/v0/users/settings",
     "/api/v0/users/update_settings"
   ]),

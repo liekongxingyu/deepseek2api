@@ -76,6 +76,8 @@ function renderFileListMarkup(files, options = {}) {
   `;
 }
 function renderApiKeyMarkup(key) {
+  const checked = key.toolCallsEnabled ? " checked" : "";
+
   return `
     <article class="key-item">
       <div class="key-info">
@@ -83,6 +85,14 @@ function renderApiKeyMarkup(key) {
         <span class="key-preview">${escapeHtml(key.preview)}</span>
       </div>
       <div class="inline-actions">
+        <label class="toggle-chip">
+          <input
+            type="checkbox"
+            data-key-tool-calls="${escapeHtml(key.id)}"
+            ${checked}
+          >
+          <span>工具调用</span>
+        </label>
         <button
           type="button"
           class="button-ghost button-danger"
@@ -142,12 +152,21 @@ export function renderDraftFileList({ container, files, onDelete }) {
     button.onclick = () => onDelete(button.dataset.draftFileId);
   });
 }
-export function renderApiKeyList({ container, keys, onDelete }) {
+export function renderApiKeyList({ container, keys, onDelete, onToggleToolCalls }) {
   container.innerHTML = keys.length
     ? keys.map(renderApiKeyMarkup).join("")
     : createEmptyState("暂无密钥", "创建后显示在这里。");
   container.querySelectorAll("[data-key-id]").forEach((button) => {
     button.onclick = () => onDelete(button.dataset.keyId);
+  });
+  container.querySelectorAll("[data-key-tool-calls]").forEach((input) => {
+    input.onchange = async () => {
+      try {
+        await onToggleToolCalls(input.dataset.keyToolCalls, input.checked);
+      } catch {
+        input.checked = !input.checked;
+      }
+    };
   });
 }
 export function setSelectOptions({ select, values }) {

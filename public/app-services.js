@@ -100,16 +100,23 @@ export function createAppServices(options) {
     await bootstrap();
   }
 
-  async function submitApiKey({ label, plainKey }) {
+  async function submitApiKey({ label, plainKey, toolCallsEnabled }) {
     const payload = await postJson("/api/api-keys", {
       accountId: getSelectedAccountId(),
       label,
-      plainKey
+      plainKey,
+      toolCallsEnabled
     });
 
     setStatus(els["api-key-output"], `新 Key：\n${payload.key}`);
     els["api-key-label"].value = "";
     els["api-key-plain"].value = "";
+    els["api-key-tool-calls"].checked = false;
+    await bootstrap();
+  }
+
+  async function updateApiKey(keyId, toolCallsEnabled) {
+    await patchJson(`/api/api-keys/${keyId}`, { toolCallsEnabled });
     await bootstrap();
   }
 
@@ -179,6 +186,7 @@ export function createAppServices(options) {
     register,
     submitApiKey,
     submitExplorer,
+    updateApiKey,
     toggleIncognito,
     updateRegistration,
     updateUser

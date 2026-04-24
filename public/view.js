@@ -87,6 +87,7 @@ export function createView(options) {
     onDeleteAccount,
     onDeleteDraftFile,
     onDeleteKey,
+    onToggleKeyToolCalls,
     onSelectSession,
     themeController
   } = options;
@@ -222,7 +223,8 @@ export function createView(options) {
     renderApiKeyList({
       container: els["api-keys"],
       keys: state.apiKeys,
-      onDelete: onDeleteKey
+      onDelete: onDeleteKey,
+      onToggleToolCalls: onToggleKeyToolCalls
     });
     setSelectOptions({ select: els["explorer-path"], values: state.discoveredPaths });
     renderMetrics();

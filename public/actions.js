@@ -154,7 +154,8 @@ function bindFormActions({ els, onExplorerSubmit, onSubmitApiKey, setStatus }) {
     try {
       await onSubmitApiKey({
         label: els["api-key-label"].value.trim(),
-        plainKey: els["api-key-plain"].value.trim()
+        plainKey: els["api-key-plain"].value.trim(),
+        toolCallsEnabled: els["api-key-tool-calls"].checked
       });
     } catch (error) {
       setStatus(els["api-key-output"], error.message);
