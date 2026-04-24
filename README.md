@@ -9,8 +9,8 @@
 | 模块 | 能力 |
 | --- | --- |
 | 控制台 UI | 注册 / 登录、本地用户隔离、DeepSeek 账号绑定、API Key 管理 |
-| OpenAI 兼容层 | `GET /v1/models`、`POST /v1/chat/completions`、`POST /v1/responses`、`GET /v1/responses/:id` |
-| 工具调用 | 仅适配 chat / responses 协议；按 API Key 单独开关 |
+| OpenAI 兼容层 | `GET /v1/models`、`POST /v1/chat/completions` |
+| 工具调用 | 仅适配 chat 协议；按 API Key 单独开关 |
 | 原生代理层 | 提供 `/proxy/*` 白名单转发，便于调试和复用 DeepSeek Web 接口 |
 | 管理后台 | 注册开关、邀请码、用户启用 / 禁用 / 删除、并发 / 速率限制 |
 | 无痕模式 | 支持全局或用户级无痕，请求完成后自动清理会话 |
@@ -121,8 +121,6 @@ APP_ADMIN_PASSWORD=
 
 - `GET /v1/models`
 - `POST /v1/chat/completions`
-- `POST /v1/responses`
-- `GET /v1/responses/:id`
 
 ### 模型说明
 
@@ -155,21 +153,9 @@ curl http://127.0.0.1:3000/v1/chat/completions \
   }'
 ```
 
-### `responses` 示例
-
-```bash
-curl http://127.0.0.1:3000/v1/responses \
-  -H "Authorization: Bearer <YOUR_API_KEY>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "deepseek-chat-fast",
-    "input": "hello"
-  }'
-```
-
 ### 工具调用
 
-- 工具调用仅适配 `chat/completions` 和 `responses`
+- 工具调用仅适配 `chat/completions`
 - 协议入口始终存在；是否允许工具调用由 API Key 的开关决定
 - API Key 未开启工具调用时：
   - 普通请求可正常使用
@@ -190,19 +176,11 @@ curl http://127.0.0.1:3000/v1/responses \
   - 普通文本继续走 `delta.content`
   - 工具调用走 `delta.tool_calls`
   - 工具调用事件出现的位置不固定，取决于模型实际输出顺序
-- `responses` 非流式：
-  - 混合输出会按顺序拆成 `output` 数组中的多个 item
-  - 典型形态是 `message -> function_call -> message`
-- `responses` 流式：
-  - 文本段会逐段生成独立的 message item
-  - 工具调用会生成 function_call item
-  - 事件顺序与模型实际输出顺序一致
 
 ### 当前限制
 
 - 只识别 XML / Markup 风格的工具调用块
 - 不识别把 `"tool_calls": [...]` 当普通文本吐出来的 JSON 片段
-- `previous_response_id` 目前不支持
 - 混合输出是否稳定出现，和所选模型强相关；`deepseek-reasoner-*` 通常比 `deepseek-chat-*` 更容易产出“文本 + 工具调用”的混合结果
 
 ## 原生代理接口
