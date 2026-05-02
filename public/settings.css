@@ -61,6 +61,14 @@
   min-width: 260px;
 }
 
+.shared-mode-panel {
+  border-top: 1px solid var(--color-border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 18px;
+}
+
 .account-item {
   align-items: center;
   background: var(--color-surface-soft);

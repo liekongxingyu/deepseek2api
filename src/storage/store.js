@@ -15,6 +15,9 @@ function defaultState() {
       inviteRequired: false
     },
     sessions: [],
+    sharedAccountMode: {
+      enabled: false
+    },
     users: []
   };
 }
@@ -35,6 +38,14 @@ function normalizeInvites(value) {
 function normalizeRegistration(value) {
   return {
     inviteRequired: Boolean(value?.inviteRequired)
+  };
+}
+
+function normalizeSharedAccountMode(value, incognito, accounts) {
+  const hasUsableAccount = accounts.some((account) => account?.id && account?.token);
+
+  return {
+    enabled: Boolean(value?.enabled && incognito.globalEnabled && hasUsableAccount)
   };
 }
 
@@ -66,13 +77,17 @@ function normalizeApiKeys(value) {
 }
 
 function normalizeState(value) {
+  const incognito = normalizeIncognito(value?.incognito);
+  const accounts = Array.isArray(value?.accounts) ? value.accounts : [];
+
   return {
-    accounts: Array.isArray(value?.accounts) ? value.accounts : [],
+    accounts,
     apiKeys: normalizeApiKeys(value?.apiKeys),
-    incognito: normalizeIncognito(value?.incognito),
+    incognito,
     invites: normalizeInvites(value?.invites),
     registration: normalizeRegistration(value?.registration),
     sessions: Array.isArray(value?.sessions) ? value.sessions : [],
+    sharedAccountMode: normalizeSharedAccountMode(value?.sharedAccountMode, incognito, accounts),
     users: normalizeUsers(value?.users)
   };
 }

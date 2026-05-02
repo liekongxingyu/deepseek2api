@@ -27,10 +27,18 @@ export function isIncognitoEnabledForOwner(ownerId) {
 }
 
 export function setGlobalIncognitoEnabled(enabled) {
-  return updateIncognito((incognito) => ({
-    ...incognito,
-    globalEnabled: Boolean(enabled)
-  }));
+  const nextEnabled = Boolean(enabled);
+
+  return updateStore((state) => ({
+    ...state,
+    incognito: {
+      ...state.incognito,
+      globalEnabled: nextEnabled
+    },
+    sharedAccountMode: nextEnabled
+      ? state.sharedAccountMode
+      : { ...state.sharedAccountMode, enabled: false }
+  })).incognito;
 }
 
 export function setOwnerIncognitoEnabled(ownerId, enabled) {

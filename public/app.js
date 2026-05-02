@@ -281,6 +281,7 @@ bindActions({
   onSendPrompt: sendPrompt,
   onSubmitApiKey: services.submitApiKey,
   onToggleIncognito: services.toggleIncognito,
+  onToggleSharedAccountMode: services.toggleSharedAccountMode,
   onToggleInviteRequirement: services.updateRegistration,
   onUpdateUser: services.updateUser,
   onUploadFiles: uploadFiles,

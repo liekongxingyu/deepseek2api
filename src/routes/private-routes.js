@@ -5,9 +5,18 @@ import {
   updateApiKeyRecord
 } from "../services/api-key-service.js";
 import { resolveScopedAccount, saveDeepseekAccountForOwner } from "../services/auth-service.js";
-import { deleteAccountById, resolveAccountLabel } from "../services/account-service.js";
+import {
+  deleteAccountById,
+  isUsableAccount,
+  listUsableAccountsForOwner,
+  resolveAccountLabel
+} from "../services/account-service.js";
 import { loginToDeepseek } from "../services/deepseek-auth.js";
 import { setGlobalIncognitoEnabled, setOwnerIncognitoEnabled } from "../services/incognito-service.js";
+import {
+  assertOwnerHasUsableAccount,
+  isSharedAccountModeEnabled
+} from "../services/shared-account-mode-service.js";
 import { toPublicAccount } from "../services/app-payload-service.js";
 import { getVisibleAccounts, getSessionIncognitoState } from "../services/auth-service.js";
 import { parseJsonBody, readRequestBody, sendError, sendJson } from "../utils/http.js";
@@ -95,6 +104,19 @@ function handleAccountDeletion(response, session, url) {
   return true;
 }
 
+function resolveApiKeyAccount(session, requestedAccountId) {
+  if (!isSharedAccountModeEnabled()) {
+    const account = resolveScopedAccount(session, requestedAccountId);
+    return isUsableAccount(account) ? account : null;
+  }
+
+  assertOwnerHasUsableAccount(session.ownerId);
+
+  const accounts = listUsableAccountsForOwner(session.ownerId);
+  const resolvedAccountId = requestedAccountId ?? accounts[0]?.id;
+  return accounts.find((account) => account.id === resolvedAccountId) ?? null;
+}
+
 export async function handlePrivateApiRequest({ request, response, session, url }) {
   if (request.method === "GET" && url.pathname === "/api/accounts") {
     sendJson(response, 200, {
@@ -124,7 +146,15 @@ export async function handlePrivateApiRequest({ request, response, session, url 
 
   if (request.method === "POST" && url.pathname === "/api/api-keys") {
     const body = await readJsonRequest(request);
-    const account = resolveScopedAccount(session, body.accountId);
+    let account;
+
+    try {
+      account = resolveApiKeyAccount(session, body.accountId);
+    } catch (error) {
+      sendError(response, 400, error.message);
+      return true;
+    }
+
     if (!account) {
       sendError(response, 404, "Account not found");
       return true;

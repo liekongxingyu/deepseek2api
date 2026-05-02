@@ -14,6 +14,7 @@
 | 原生代理层 | 提供 `/proxy/*` 白名单转发，便于调试和复用 DeepSeek Web 接口 |
 | 管理后台 | 注册开关、邀请码、用户启用 / 禁用 / 删除、并发 / 速率限制 |
 | 无痕模式 | 支持全局或用户级无痕，请求完成后自动清理会话 |
+| 大锅饭模式 | 管理员开启后，所有 API Key 在全站可用 DeepSeek 账号间共享轮询 |
 | 部署形态 | 无第三方运行时依赖，`npm start` 即可启动 |
 
 ## 项目特点
@@ -25,7 +26,7 @@
 - 遇到 PoW 保护接口时会自动获取 wasm 并求解挑战
 - OpenAI 兼容层同时支持流式和非流式响应
 - `deepseek-reasoner-*` 模型会把思维内容包在 `<think>...</think>`
-- API Key 请求会在当前用户可见账号之间轮询
+- API Key 请求默认在当前用户可见账号之间轮询；大锅饭模式下会改为全站共享轮询
 
 ## 运行要求
 
@@ -78,7 +79,8 @@ APP_ADMIN_PASSWORD=
 2. 在“账号”页绑定 DeepSeek 账号
 3. 在“密钥”页创建 API Key
 4. 如需工具调用，为该 API Key 单独打开“工具调用”开关
-5. 使用内置聊天工作区，或通过 OpenAI 兼容接口接入客户端
+5. 管理员如需全站共享账号，先开启“全局无痕”，再开启“大锅饭”
+6. 使用内置聊天工作区，或通过 OpenAI 兼容接口接入客户端
 
 ## 环境变量
 
@@ -99,7 +101,8 @@ APP_ADMIN_PASSWORD=
 - API Key 可指定自定义明文，留空则自动生成
 - API Key 可单独开启或关闭“工具调用”
 - 创建 API Key 时可直接设置工具调用开关
-- OpenAI 兼容请求会在当前用户可见账号之间轮询
+- OpenAI 兼容请求默认会在当前用户可见账号之间轮询
+- 大锅饭模式开启时，生成 API Key 的用户必须先绑定可用 DeepSeek 账号
 
 ### 管理后台
 
@@ -108,12 +111,22 @@ APP_ADMIN_PASSWORD=
 - 生成、删除、批量删除邀请码
 - 禁用、启用、删除本地用户
 - 为用户设置并发上限和每分钟请求上限
+- 开启或关闭大锅饭模式
 
 ### 无痕模式
 
 - 管理员可开启全局无痕
 - 普通用户可只为自己开启无痕
 - 开启后，请求完成后会自动清理相关 DeepSeek 会话
+
+### 大锅饭模式
+
+- 只能由管理员开启或关闭
+- 开启前必须先开启全局无痕
+- 开启后，所有 OpenAI 兼容 API Key 会共享全站可用 DeepSeek 账号池
+- 账号选择使用系统级轮询游标，不再按单个 API Key 或单个用户分别轮询
+- 如果关闭全局无痕，大锅饭模式会自动关闭
+- 普通用户不能开启大锅饭，但开启后其 API Key 调用也会进入全站共享轮询
 
 ## OpenAI 兼容接口
 
@@ -252,6 +265,7 @@ curl http://127.0.0.1:3000/v1/chat/completions \
 ### 管理接口
 
 - `POST /api/admin/registration`
+- `POST /api/admin/shared-account-mode`
 - `POST /api/admin/invites`
 - `POST /api/admin/invites/batch-delete`
 - `DELETE /api/admin/invites/:id`

@@ -100,6 +100,11 @@ export function createAppServices(options) {
     await bootstrap();
   }
 
+  async function toggleSharedAccountMode(enabled) {
+    await postJson("/api/admin/shared-account-mode", { enabled });
+    await bootstrap();
+  }
+
   async function submitApiKey({ label, plainKey, toolCallsEnabled }) {
     const payload = await postJson("/api/api-keys", {
       accountId: getSelectedAccountId(),
@@ -186,6 +191,7 @@ export function createAppServices(options) {
     register,
     submitApiKey,
     submitExplorer,
+    toggleSharedAccountMode,
     updateApiKey,
     toggleIncognito,
     updateRegistration,

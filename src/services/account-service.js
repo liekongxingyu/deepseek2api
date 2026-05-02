@@ -13,6 +13,14 @@ export function listAccounts() {
   return readStore().accounts;
 }
 
+export function isUsableAccount(account) {
+  return Boolean(account?.id && account?.token);
+}
+
+export function listUsableAccounts() {
+  return listAccounts().filter(isUsableAccount);
+}
+
 export function getAccountById(accountId) {
   return listAccounts().find((account) => account.id === accountId) ?? null;
 }
@@ -35,6 +43,10 @@ export function findAccountForOwner(ownerId, deepseekUserId) {
 
 export function listAccountsForOwner(ownerId) {
   return listAccounts().filter((account) => account.ownerId === ownerId);
+}
+
+export function listUsableAccountsForOwner(ownerId) {
+  return listAccountsForOwner(ownerId).filter(isUsableAccount);
 }
 
 export function saveAccount(accountInput) {

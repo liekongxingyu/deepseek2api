@@ -1,6 +1,10 @@
 import { buildAdminData } from "../services/app-payload-service.js";
 import { createInvites, deleteInvites } from "../services/invite-service.js";
 import { setRegistrationSettings } from "../services/registration-service.js";
+import {
+  getSharedAccountMode,
+  setSharedAccountModeEnabled
+} from "../services/shared-account-mode-service.js";
 import { deleteUsers, setUsersDisabled, updateUser } from "../services/user-service.js";
 import { parseJsonBody, readRequestBody, sendError, sendJson } from "../utils/http.js";
 
@@ -32,6 +36,25 @@ async function handleRegistrationRoute(request, response, url) {
         inviteRequired: body.inviteRequired
       });
     });
+    return true;
+  }
+
+  return false;
+}
+
+async function handleSharedAccountModeRoute(request, response, url) {
+  if (request.method === "POST" && url.pathname === "/api/admin/shared-account-mode") {
+    const body = await readJsonRequest(request);
+
+    try {
+      setSharedAccountModeEnabled(body.enabled);
+      sendJson(response, 200, {
+        sharedAccountMode: getSharedAccountMode()
+      });
+    } catch (error) {
+      sendError(response, 400, error.message);
+    }
+
     return true;
   }
 
@@ -108,6 +131,10 @@ async function handleUserRoutes(request, response, url) {
 
 export async function handleAdminApiRequest({ request, response, url }) {
   if (await handleRegistrationRoute(request, response, url)) {
+    return true;
+  }
+
+  if (await handleSharedAccountModeRoute(request, response, url)) {
     return true;
   }
 

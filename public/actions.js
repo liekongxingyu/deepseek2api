@@ -33,7 +33,15 @@ function bindAuthActions({ els, onLogin, onRegister, setStatus }) {
   };
 }
 
-function bindWorkspaceActions({ els, onAccountChange, onAddAccount, onLogout, onToggleIncognito, setStatus }) {
+function bindWorkspaceActions({
+  els,
+  onAccountChange,
+  onAddAccount,
+  onLogout,
+  onToggleIncognito,
+  onToggleSharedAccountMode,
+  setStatus
+}) {
   els["logout-button"].onclick = async () => {
     setStatus(els["app-status"], "");
 
@@ -77,6 +85,18 @@ function bindWorkspaceActions({ els, onAccountChange, onAddAccount, onLogout, on
       setStatus(els["incognito-status"], "已保存。");
     } catch (error) {
       setStatus(els["incognito-status"], error.message);
+    }
+  };
+
+  els["shared-mode-form"].onsubmit = async (event) => {
+    event.preventDefault();
+    setStatus(els["shared-mode-status"], "保存中...");
+
+    try {
+      await onToggleSharedAccountMode(els["shared-mode-toggle"].checked);
+      setStatus(els["shared-mode-status"], "已保存。");
+    } catch (error) {
+      setStatus(els["shared-mode-status"], error.message);
     }
   };
 }

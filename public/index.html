@@ -137,6 +137,7 @@
                   <article class="status-badge"><span>身份</span><strong id="role-label">未登录</strong></article>
                   <article class="status-badge"><span>用户</span><strong id="user-summary"></strong></article>
                   <article class="status-badge"><span>无痕</span><strong id="incognito-summary">关闭</strong></article>
+                  <article class="status-badge"><span>大锅饭</span><strong id="shared-mode-summary">关闭</strong></article>
                   <article class="status-badge"><span>主题</span><strong id="active-theme-label">星空</strong></article>
                 </div>
                 <div class="metric-badges">
@@ -220,6 +221,15 @@
                       <button type="submit" class="button-primary" data-ripple>保存</button>
                     </form>
                     <pre id="incognito-status" class="status hidden"></pre>
+                    <div id="shared-mode-panel" class="shared-mode-panel hidden">
+                      <div class="section-heading"><div><span class="eyebrow">Shared</span><h3>大锅饭</h3></div></div>
+                      <p id="shared-mode-description" class="muted section-copy"></p>
+                      <form id="shared-mode-form" class="settings-form">
+                        <label class="toggle-chip settings-toggle"><input id="shared-mode-toggle" type="checkbox"><span id="shared-mode-label">全局共享账户</span></label>
+                        <button type="submit" class="button-primary" data-ripple>保存</button>
+                      </form>
+                      <pre id="shared-mode-status" class="status hidden"></pre>
+                    </div>
                   </article>
                 </div>
               </section>

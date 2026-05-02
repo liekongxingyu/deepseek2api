@@ -36,5 +36,6 @@ export const ELEMENT_IDS = [
   "messages", "metric-session-count", "model-select", "new-session", "prompt-input", "refresh-sessions", "register-form",
   "register-invite-code", "register-invite-group", "register-password", "register-status", "register-username",
   "response-mode", "role-label", "send-button", "session-caption", "session-count", "sessions",
-  "tab-admin", "user-summary"
+  "shared-mode-description", "shared-mode-form", "shared-mode-label", "shared-mode-panel",
+  "shared-mode-status", "shared-mode-summary", "shared-mode-toggle", "tab-admin", "user-summary"
 ];
