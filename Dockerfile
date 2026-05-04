@@ -1,21 +1,23 @@
 FROM node:20-alpine
 
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+
 WORKDIR /app
 
 COPY package.json ./
-RUN npm install --omit=dev
+RUN npm install --omit=dev && npm cache clean --force
 
 COPY src/ ./src/
 COPY public/ ./public/
 
-RUN mkdir -p data
+RUN mkdir -p data && chown -R nodejs:nodejs /app
+
+USER nodejs
 
 EXPOSE 3000
 
 ENV NODE_ENV=production \
     PORT=3000
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
 
 CMD ["node", "src/server.js"]
