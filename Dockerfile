@@ -8,7 +8,8 @@ RUN npm install --omit=dev
 COPY src/ ./src/
 COPY public/ ./public/
 
-RUN mkdir -p data && touch data/.gitkeep
+RUN mkdir -p data && \
+    echo '{"accounts":[],"apiKeys":[],"incognito":{"globalEnabled":false,"owners":{}},"invites":[],"registration":{"inviteRequired":false},"sessions":[],"sharedAccountMode":{"enabled":false},"users":[]}' > data/app.json
 
 EXPOSE 3000
 
