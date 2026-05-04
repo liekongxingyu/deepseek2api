@@ -55,6 +55,6 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(config.port, () => {
-  console.log(`Server listening on http://127.0.0.1:${config.port}`);
+server.listen(config.port, "0.0.0.0", () => {
+  console.log(`Server listening on http://0.0.0.0:${config.port}`);
 });
