@@ -59,6 +59,11 @@ async function handleAccountCreation(request, response, session) {
       password: body.password,
       deviceId: body.deviceId
     });
+    
+    if (!loginResult || !loginResult.data || !loginResult.data.biz_data) {
+      throw new Error("Invalid login response");
+    }
+    
     const account = saveDeepseekAccountForOwner({
       ownerId: session.ownerId,
       loginValue: body.username,
@@ -69,7 +74,8 @@ async function handleAccountCreation(request, response, session) {
 
     sendJson(response, 200, { account: toPublicAccount(account) });
   } catch (error) {
-    sendError(response, 401, error.message);
+    console.error("Account creation error:", error.message);
+    sendError(response, error.message.includes("fetch") || error.message.includes("network") ? 503 : 401, error.message);
   }
 
   return true;

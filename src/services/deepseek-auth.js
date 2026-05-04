@@ -34,18 +34,40 @@ function buildLoginPayload(loginValue, password, deviceId) {
 }
 
 export async function loginToDeepseek({ loginValue, password, deviceId }) {
-  const response = await fetch(`${config.deepseekBaseUrl}/api/v0/users/login`, {
-    method: "POST",
-    headers: createBaseHeaders("", { "content-type": "application/json" }),
-    body: JSON.stringify(buildLoginPayload(loginValue, password, deviceId))
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-  const result = await response.json();
-  if (result.data?.biz_code !== 0) {
-    throw new Error(result.msg || result.data?.biz_msg || "DeepSeek login failed");
+  try {
+    const response = await fetch(`${config.deepseekBaseUrl}/api/v0/users/login`, {
+      method: "POST",
+      headers: createBaseHeaders("", { "content-type": "application/json" }),
+      body: JSON.stringify(buildLoginPayload(loginValue, password, deviceId)),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+
+    const text = await response.text();
+    if (!text) {
+      throw new Error("Empty response from DeepSeek");
+    }
+
+    const result = JSON.parse(text);
+    if (result.data?.biz_code !== 0) {
+      throw new Error(result.msg || result.data?.biz_msg || "DeepSeek login failed");
+    }
+
+    return result;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Login request timed out");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return result;
 }
 
 export async function refreshAccountToken(account) {
