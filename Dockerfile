@@ -8,8 +8,7 @@ RUN npm install --omit=dev
 COPY src/ ./src/
 COPY public/ ./public/
 
-RUN mkdir -p data && \
-    echo '{"accounts":[],"apiKeys":[],"incognito":{"globalEnabled":false,"owners":{}},"invites":[],"registration":{"inviteRequired":false},"sessions":[],"sharedAccountMode":{"enabled":false},"users":[]}' > data/app.json
+RUN mkdir -p data
 
 EXPOSE 3000
 
